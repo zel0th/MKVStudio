@@ -25,4 +25,5 @@ struct QueueJob: Identifiable, Codable, Sendable {
     var copySource: URL?
     var splitOutput: Bool?
     var chapterXML: String?
+    var tagOptions: TagJobOptions?
 }

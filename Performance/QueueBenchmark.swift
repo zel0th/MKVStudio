@@ -20,7 +20,7 @@ import Darwin
     }
     @MainActor static func main() async throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
-        let tools = try ToolLocator.validate(directory: URL(fileURLWithPath: "/opt/homebrew/bin"))
+        guard let tools = ToolLocator.discover() else { throw StudioError.message("Console utilities unavailable") }
         let state = AppState(persistenceEnabled: false); state.tools = tools
         let source = try await ToolLocator.identify(root.appendingPathComponent("stress.wav"), tools: tools)
         var second = source; second.id = UUID(); second.tracks[0].id = UUID()
@@ -38,6 +38,7 @@ import Darwin
             var project = StudioProject(files: mode == 1 ? [source, second] : [source], outputPath: root.appendingPathComponent("result-\(index).mkv").path)
             if mode == 1 { project.assemblyMode = .append }
             if mode == 2 { project.splitOptions = SplitOptions(mode: .size, value: "256M") }
+            project.tagEdits = TagEdits(values: ["TITLE": "Benchmark", "DIRECTOR": "Test Director", "DATE_RELEASED": "2026", "RECORDING_LOCATION": "JP"])
             let job = try MKVCommandBuilder.makeJob(project: project, tools: tools)
             try state.addJob(job)
             var peakOwn = resident(getpid()), peakChild: UInt64 = 0, samples = 0

@@ -19,6 +19,15 @@ final class AppState {
     var selectedChapterID: UUID?
     var selectedEditionID: UUID?
     var isLoadingChapters = false
+    var tagValues: [String: String] = [:]
+    var isLoadingTags = false
+    var tagsSourceID: UUID?
+    var previewURL: URL?
+    var isPreparingPreview = false
+    @ObservationIgnored var metadataGeneration = UUID()
+    @ObservationIgnored var metadataToken: ProcessToken?
+    @ObservationIgnored var previewToken: ProcessToken?
+    @ObservationIgnored var previewDirectory: URL?
     var isImporting = false
     var importLabel = ""
     var isInspectorVisible = true
@@ -153,6 +162,7 @@ final class AppState {
         project.files.removeAll { $0.id == id }
         if files.isEmpty {
             // Keep deliberately edited chapters/attachments, but discard the previous source's identity.
+            clearMetadata()
             project.title = ""
             project.outputPath = ""
             infoText = "Выберите исходный Matroska-файл, чтобы изучить его структуру."
@@ -228,8 +238,10 @@ final class AppState {
             let result = try await ProcessRunner.run(executable: job.executable, arguments: job.arguments, token: currentToken, outputLimit: 1_048_576) { buffer.append($0) }
             receive(buffer.drain(), for: id)
             guard result.exitCode <= 1 else { throw StudioError.message(result.output) }
+            let tagWarnings = try await MetadataService.applyTags(job, token: currentToken)
+            if currentToken.isCancelled { throw CancellationError() }
             try MKVCommandBuilder.publish(job)
-            updateJob(id) { $0.state = result.exitCode == 1 ? .warning : .finished; $0.progress = 1; $0.log = String(result.output.suffix(100_000)) }
+            updateJob(id) { $0.state = result.exitCode == 1 || !tagWarnings.isEmpty ? .warning : .finished; $0.progress = 1; $0.log = String((result.output + tagWarnings).suffix(100_000)) }
             try? FileManager.default.removeItem(at: job.stagingDirectory)
         } catch {
             let cancelled = error is CancellationError
@@ -255,6 +267,7 @@ final class AppState {
         guard let i = jobs.firstIndex(where: { $0.id == id }) else { return }; edit(&jobs[i])
     }
     func resetWorkspace() {
+        clearMetadata()
         project = StudioProject()
         selectedTrackID = nil; selectedFileID = nil
         selectedChapterID = nil; selectedEditionID = nil
@@ -291,12 +304,13 @@ final class AppState {
     }
     func readInfo() async {
         guard let tools, let file = selectedFile, !isReadingInfo else { return }
+        let generation = metadataGeneration
         isReadingInfo = true; defer { isReadingInfo = false }
         do {
             let result = try await ProcessRunner.run(executable: tools.mkvinfo, arguments: ["--ui-language", "en_US", file.url.path], outputLimit: 2_097_152)
             guard result.exitCode <= 1 else { throw StudioError.message(result.output) }
-            infoText = result.output
-        } catch { infoText = error.localizedDescription }
+            if generation == metadataGeneration { infoText = result.output }
+        } catch { if generation == metadataGeneration { infoText = error.localizedDescription } }
     }
     func saveProject() {
         let panel = NSSavePanel(); panel.nameFieldStringValue = "Проект.mkvstudio"; panel.canCreateDirectories = true
@@ -316,6 +330,7 @@ final class AppState {
         do {
             let loaded = try JSONDecoder().decode(StudioProject.self, from: Data(contentsOf: url))
             guard loaded.version == 1 else { throw StudioError.message("Версия проекта не поддерживается.") }
+            clearMetadata()
             project = loaded; selectedTrackID = tracks.first?.id; selectedFileID = files.first?.id; selectedSection = .workspace
         } catch { report(error) }
     }
@@ -324,12 +339,12 @@ final class AppState {
 }
 
 enum StudioSection: String, CaseIterable, Identifiable {
-    case workspace, output, chapters, attachments, information, queue
+    case workspace, output, chapters, tags, attachments, information, queue
     var id: Self { self }
     var title: String {
-        switch self { case .workspace: "Сборка"; case .output: "Склейка и разбиение"; case .chapters: "Редактор глав"; case .attachments: "Вложения"; case .information: "Информация"; case .queue: "Очередь заданий" }
+        switch self { case .workspace: "Сборка"; case .output: "Склейка и разбиение"; case .chapters: "Редактор глав"; case .tags: "Редактор тегов"; case .attachments: "Вложения"; case .information: "Информация"; case .queue: "Очередь заданий" }
     }
     var symbol: String {
-        switch self { case .workspace: "square.stack.3d.up"; case .output: "scissors"; case .chapters: "list.bullet.indent"; case .attachments: "paperclip"; case .information: "info.circle"; case .queue: "list.bullet.rectangle" }
+        switch self { case .workspace: "square.stack.3d.up"; case .output: "scissors"; case .chapters: "list.bullet.indent"; case .tags: "tag"; case .attachments: "paperclip"; case .information: "info.circle"; case .queue: "list.bullet.rectangle" }
     }
 }

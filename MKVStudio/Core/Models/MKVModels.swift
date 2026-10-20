@@ -136,6 +136,7 @@ struct StudioProject: Codable, Equatable, Sendable {
     var splitOptions: SplitOptions?
     var chapterDocument: ChapterDocument?
     var useChapterEditor: Bool?
+    var tagEdits: TagEdits?
     var mode: AssemblyMode { assemblyMode ?? .multiplex }
     var split: SplitOptions { splitOptions ?? SplitOptions() }
 }

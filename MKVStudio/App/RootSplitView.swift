@@ -1,4 +1,5 @@
 import SwiftUI
+import QuickLook
 
 struct RootSplitView: View {
     @Bindable var state: AppState
@@ -13,6 +14,7 @@ struct RootSplitView: View {
                     case .output: OutputOptionsView(state: state)
                     case .chapters: ChapterEditorView(state: state)
                     case .attachments: AttachmentsView(state: state)
+                    case .tags: TagEditorView(state: state)
                     case .information: InformationView(state: state)
                     case .queue: QueueView(state: state)
                     }
@@ -25,6 +27,8 @@ struct RootSplitView: View {
                 InspectorView(state: state).inspectorColumnWidth(min: 260, ideal: 380, max: 380)
             }
         }
+        .quickLookPreview($state.previewURL)
+        .onChange(of: state.previewURL) { if state.previewURL == nil { state.dismissPreview() } }
         .background(StudioWindowAnchor(role: .main))
         .preferredColorScheme(state.appearance == "light" ? .light : state.appearance == "dark" ? .dark : nil)
         .onChange(of: state.selectedTrackID) {

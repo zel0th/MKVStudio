@@ -48,7 +48,11 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try session.freshSession(); print("PASS fresh launch, termination, queue and preferences")
         try session.toolDirectories(); print("PASS tool picker initial directories")
         try session.settingsPlacement(); print("PASS settings placement across display geometries")
-        print("19 integration checks passed")
+        let metadata = MetadataTests()
+        try metadata.preservation(); print("PASS standard tags, nesting, languages, targets and validation")
+        try await metadata.realTags(); print("PASS real tag edits in remux, append and split; queue snapshot; unchanged streams")
+        try await metadata.previews(); print("PASS attachment and tag previews, limits, safe paths and cleanup")
+        print("22 integration checks passed")
     }
 }
 '''
@@ -57,6 +61,6 @@ with tempfile.TemporaryDirectory(prefix='mkvstudio-checks-') as folder:
     check = folder / 'Checks.swift'; check.write_text(source + helpers)
     binary = folder / 'checks'
     files = sorted((root / 'MKVStudio/Core/Models').glob('*.swift')) + sorted((root / 'MKVStudio/Core/Services').glob('*.swift'))
-    files += [root / 'MKVStudio/App' / name for name in ['AppState.swift', 'AdvancedState.swift', 'WindowStyling.swift']]
+    files += [root / 'MKVStudio/App' / name for name in ['AppState.swift', 'MetadataState.swift', 'AdvancedState.swift', 'WindowStyling.swift']]
     subprocess.run(['swiftc', '-swift-version', '6', '-parse-as-library', '-module-cache-path', str(Path(tempfile.gettempdir()) / 'MKVStudio-check-modules'), *map(str, files), str(check), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True, env={**os.environ, 'MKVSTUDIO_SAMPLE_PATH': str(root/'Samples/Видео.mp4')})

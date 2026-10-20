@@ -18,6 +18,15 @@ struct SidebarView: View {
                 }
             }
             Section {
+                Button(role: .destructive, action: state.clearSources) {
+                    Label("Очистить", systemImage: "trash")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).tint(.red).controlSize(.large)
+                .disabled(state.files.isEmpty || state.isImporting)
+                .help("Очистить список исходных файлов. Файлы на диске и очередь сохраняются.")
+            }
+            Section {
                 ForEach(state.files) { file in
                     Button {
                         state.selectedFileID = file.id

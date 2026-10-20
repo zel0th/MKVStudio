@@ -10,6 +10,7 @@ enum MKVCommandBuilder {
         }
         let output = destination(project).standardizedFileURL.resolvingSymlinksInPath()
         try project.split.validate()
+        try project.tagEdits?.validate()
         if project.useChapterEditor == true { _ = try project.chapterDocument?.xml() }
         if project.mode == .append { try validateAppend(project) }
         let inputs = project.files.map(\.url) + project.attachments.map(\.url) + (project.useChapterEditor == true ? [] : [project.chaptersURL].compactMap { $0 })
@@ -83,7 +84,7 @@ enum MKVCommandBuilder {
         let muxOutput = project.split.enabled ? staged.appendingPathComponent("part.mkv") : staged
         let xml = project.useChapterEditor == true ? try (project.chapterDocument ?? ChapterDocument()).xml() : nil
         let chapterPath = xml == nil ? nil : stage.appendingPathComponent("chapters.xml")
-        return QueueJob(title: output.lastPathComponent, executable: tools.mkvmerge, arguments: remux(project: project, output: muxOutput, chaptersOverride: chapterPath), output: output, stagingDirectory: stage, stagedOutput: staged, splitOutput: project.split.enabled, chapterXML: xml)
+        return QueueJob(title: output.lastPathComponent, executable: tools.mkvmerge, arguments: remux(project: project, output: muxOutput, chaptersOverride: chapterPath), output: output, stagingDirectory: stage, stagedOutput: staged, splitOutput: project.split.enabled, chapterXML: xml, tagOptions: project.tagEdits.flatMap { $0.values.isEmpty ? nil : TagJobOptions(edits: $0, extract: tools.mkvextract, propedit: tools.mkvpropedit) })
     }
 
     static func destination(_ project: StudioProject) -> URL {

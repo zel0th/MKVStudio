@@ -11,6 +11,7 @@ struct AttachmentsView: View {
                         Text("Обложки, шрифты и метаданные.").foregroundStyle(.secondary)
                     }
                     Spacer()
+                    if state.isPreparingPreview { ProgressView().controlSize(.small) }
                     Button("Добавить…", action: state.addAttachments)
                 }
             }
@@ -23,6 +24,8 @@ struct AttachmentsView: View {
                             TextField("Имя вложения", text: $item.name)
                             Text(item.url.lastPathComponent).font(.body).foregroundStyle(.secondary)
                         }
+                        Button("Просмотр", systemImage: "eye") { state.previewAddedAttachment(item) }
+                            .disabled(state.isPreparingPreview)
                         Button { state.project.attachments.removeAll { $0.id == item.id } } label: { Image(systemName: "minus.circle") }.help("Убрать вложение")
                     }
                 }
@@ -30,14 +33,26 @@ struct AttachmentsView: View {
             ForEach($state.project.files) { $file in
                 Section(file.fileName) {
                     Toggle("Сохранить главы (\(file.chapterCount))", isOn: $file.includeChapters).disabled(state.project.chaptersURL != nil || state.project.useChapterEditor == true)
-                    Toggle("Сохранить теги", isOn: $file.includeTags)
+                    HStack {
+                        Toggle("Сохранить теги", isOn: $file.includeTags)
+                        Button("Просмотр тегов", systemImage: "doc.text.magnifyingglass") {
+                            Task { await state.previewTags(file: file) }
+                        }.disabled(!file.isMatroska || state.isPreparingPreview || state.tools == nil)
+                    }
                     ForEach($file.attachments) { $attachment in
-                        Toggle(isOn: $attachment.included) {
-                            VStack(alignment: .leading) {
-                                Text(attachment.name)
-                                Text("\(attachment.mimeType) · \(ByteCountFormatter.string(fromByteCount: attachment.size, countStyle: .file))").font(.body).foregroundStyle(.secondary)
+                        HStack {
+                            Toggle(isOn: $attachment.included) {
+                                VStack(alignment: .leading) {
+                                    Text(attachment.name)
+                                    Text("\(attachment.mimeType) · \(ByteCountFormatter.string(fromByteCount: attachment.size, countStyle: .file))").foregroundStyle(.secondary)
+                                }
                             }
-                        }
+                            Button("Просмотр", systemImage: "eye") {
+                                Task { await state.previewAttachment(file: file, attachment: attachment) }
+                            }.disabled(state.isPreparingPreview || state.tools == nil)
+                                .help("Просмотреть «\(attachment.name)»")
+                        }.accessibilityElement(children: .contain)
+                        .accessibilityLabel(attachment.name)
                     }
                 }
             }
