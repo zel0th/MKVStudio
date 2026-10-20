@@ -31,8 +31,11 @@ struct MatroskaTagField: Identifiable, Sendable {
 
 struct TagEdits: Codable, Equatable, Sendable {
     var language = "und"
+    var targetTypeValue: Int?
+    var scope: Int { targetTypeValue ?? 50 }
     var values: [String: String] = [:]
     func validate() throws {
+        guard [50, 70].contains(scope) else { throw StudioError.message("Неподдерживаемый уровень тегов.") }
         guard language.range(of: "^[A-Za-z]{2,3}(-[A-Za-z0-9]+)*$", options: .regularExpression) != nil else {
             throw StudioError.message("Укажите код языка тегов, например und, ru или en.")
         }
@@ -104,9 +107,9 @@ struct MatroskaTags: Sendable {
         }
         return doc
     }
-    private static func globalMovie(_ tag: XMLElement) -> Bool {
-        guard let targets = tag.elements(forName: "Targets").first else { return true }
-        return (targets.elements(forName: "TargetTypeValue").first?.stringValue ?? "50") == "50"
+    private static func global(_ tag: XMLElement, scope: Int) -> Bool {
+        guard let targets = tag.elements(forName: "Targets").first else { return scope == 50 }
+        return (targets.elements(forName: "TargetTypeValue").first?.stringValue ?? "50") == String(scope)
             && !["TrackUID", "ChapterUID", "EditionUID", "AttachmentUID"].contains { !targets.elements(forName: $0).isEmpty }
     }
     private static func language(_ simple: XMLElement) -> String {
@@ -121,8 +124,8 @@ struct MatroskaTags: Sendable {
             && (simple.elements(forName: "DefaultLanguage").first?.stringValue ?? "1") == "1"
             && simple.elements(forName: "Binary").isEmpty
     }
-    func preferredLanguage() throws -> String {
-        let tags = try Self.document(xml).rootElement()!.elements(forName: "Tag").filter(Self.globalMovie)
+    func preferredLanguage(scope: Int = 50) throws -> String {
+        let tags = try Self.document(xml).rootElement()!.elements(forName: "Tag").filter { Self.global($0, scope: scope) }
         let fields = Set(MatroskaTagField.all.map(\.id))
         let node = tags.flatMap { $0.elements(forName: "Simple") }.first {
             fields.contains($0.elements(forName: "Name").first?.stringValue ?? "")
@@ -130,9 +133,9 @@ struct MatroskaTags: Sendable {
         }
         return node.map(Self.language) ?? "und"
     }
-    func values(language: String) throws -> [String: String] {
+    func values(language: String, scope: Int = 50) throws -> [String: String] {
         let root = try Self.document(xml).rootElement()!
-        let nodes = root.elements(forName: "Tag").filter(Self.globalMovie).flatMap { $0.elements(forName: "Simple") }
+        let nodes = root.elements(forName: "Tag").filter { Self.global($0, scope: scope) }.flatMap { $0.elements(forName: "Simple") }
         return Dictionary(uniqueKeysWithValues: MatroskaTagField.all.map { field in
             (field.id, nodes.filter { Self.matches($0, key: field.id, language: language) }.compactMap { $0.elements(forName: "String").first?.stringValue }.joined(separator: "\n"))
         })
@@ -140,11 +143,11 @@ struct MatroskaTags: Sendable {
     func applying(_ edits: TagEdits) throws -> String {
         try edits.validate()
         let doc = try Self.document(xml), root = doc.rootElement()!
-        let tags = root.elements(forName: "Tag").filter(Self.globalMovie)
+        let tags = root.elements(forName: "Tag").filter { Self.global($0, scope: edits.scope) }
         let destination = tags.first ?? XMLElement(name: "Tag")
         if destination.parent == nil {
             let targets = XMLElement(name: "Targets")
-            targets.addChild(XMLElement(name: "TargetTypeValue", stringValue: "50"))
+            targets.addChild(XMLElement(name: "TargetTypeValue", stringValue: String(edits.scope)))
             destination.addChild(targets); root.addChild(destination)
         }
         for field in MatroskaTagField.all {

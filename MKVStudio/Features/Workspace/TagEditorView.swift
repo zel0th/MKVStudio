@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TagEditorView: View {
     @Bindable var state: AppState
+    @StudioViewState private var searchContext: KinopoiskSearchContext?
     var body: some View {
         Group {
             if state.files.isEmpty {
@@ -9,12 +10,28 @@ struct TagEditorView: View {
             } else {
                 Form {
                     Section {
-                        Text("Редактор тегов").font(.title2.weight(.semibold))
+                        HStack {
+                            Text("Редактор тегов").font(.title2.weight(.semibold))
+                            Spacer()
+                            Button("Найти информацию…", systemImage: "magnifyingglass") {
+                                if let file = state.files.first {
+                                    searchContext = KinopoiskSearchContext(id: file.id, generation: state.metadataGeneration, query: state.project.title)
+                                }
+                            }.disabled(state.isLoadingTags)
+                        }
                         Text("Изменения сохранятся в результате сборки. Исходные файлы сохраняются.").foregroundStyle(.secondary)
                         TextField("Название контейнера", text: $state.project.title)
                         Text("Это внутреннее название файла, которое показывают проигрыватели.").foregroundStyle(.secondary)
                     }
-                    Section("Произведение · фильм или эпизод") {
+                    Section("Произведение") {
+                        Picker("Уровень тегов", selection: Binding(get: { state.project.tagEdits?.scope ?? 50 }, set: { scope in
+                            state.project.tagEdits = TagEdits(language: state.project.tagEdits?.language ?? "und", targetTypeValue: scope)
+                            state.tagsSourceID = nil
+                            Task { await state.loadTags() }
+                        })) {
+                            Text("Фильм / эпизод").tag(50)
+                            Text("Сериал целиком").tag(70)
+                        }.disabled(state.isLoadingTags || state.project.tagEdits?.values.isEmpty == false)
                         Picker("Язык тегов", selection: Binding(get: { state.project.tagEdits?.language ?? "und" }, set: state.setTagLanguage)) {
                             Text("Не указан").tag("und")
                             Text("Русский").tag("ru")
@@ -54,6 +71,7 @@ struct TagEditorView: View {
                 }.formStyle(.grouped)
             }
         }
+        .sheet(item: $searchContext) { context in KinopoiskSearchView(state: state, context: context) }
         .task(id: state.files.first?.id) { await state.loadTags() }
     }
 }

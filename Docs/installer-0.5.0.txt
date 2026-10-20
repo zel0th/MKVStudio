@@ -1,0 +1,6 @@
+PASS clean install: 4 independent executables, linkage, identification and idempotency
+PASS partial install: existing tools preserved, only missing command exposed
+PASS corrupt download rejected before execution; staging and lock cleaned
+PASS symlink destination rejected without changing existing installation
+PASS broken user link preserved; app can discover private fallback
+5 installer scenarios passed

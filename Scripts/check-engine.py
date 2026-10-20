@@ -1,6 +1,7 @@
 """Run the same integration cases with CLT installations lacking Swift Testing."""
 from pathlib import Path
-import os, re, subprocess, tempfile
+import os, re, subprocess, tempfile, threading, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 root = Path(__file__).resolve().parent.parent
 source = '\n'.join(p.read_text() for p in sorted((root / 'Tests').glob('*.swift')))
 source = source.replace('import Testing\n', '').replace('@testable import MKVStudio\n', '')
@@ -52,7 +53,13 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try metadata.preservation(); print("PASS standard tags, nesting, languages, targets and validation")
         try await metadata.realTags(); print("PASS real tag edits in remux, append and split; queue snapshot; unchanged streams")
         try await metadata.previews(); print("PASS attachment and tag previews, limits, safe paths and cleanup")
-        print("22 integration checks passed")
+        let kinopoisk = KinopoiskTests()
+        try await kinopoisk.requests(); print("PASS API requests, schema and credential isolation")
+        try await kinopoisk.failures(); print("PASS API failures, invalid images and cancellation")
+        try await kinopoisk.importing(); print("PASS selected online tags/poster through real remux, queue persistence and unchanged streams")
+        try await kinopoisk.atomicity(); print("PASS series scope, language conflicts, stale workspace and atomic import")
+        try await kinopoisk.http(); print("PASS actual bounded HTTP transport, redirects and cancellation")
+        print("27 integration checks passed")
     }
 }
 '''
@@ -61,6 +68,22 @@ with tempfile.TemporaryDirectory(prefix='mkvstudio-checks-') as folder:
     check = folder / 'Checks.swift'; check.write_text(source + helpers)
     binary = folder / 'checks'
     files = sorted((root / 'MKVStudio/Core/Models').glob('*.swift')) + sorted((root / 'MKVStudio/Core/Services').glob('*.swift'))
-    files += [root / 'MKVStudio/App' / name for name in ['AppState.swift', 'MetadataState.swift', 'AdvancedState.swift', 'WindowStyling.swift']]
+    files += [root / 'MKVStudio/App' / name for name in ['AppState.swift', 'MetadataState.swift', 'KinopoiskState.swift', 'AdvancedState.swift', 'WindowStyling.swift']]
     subprocess.run(['swiftc', '-swift-version', '6', '-parse-as-library', '-module-cache-path', str(Path(tempfile.gettempdir()) / 'MKVStudio-check-modules'), *map(str, files), str(check), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True, env={**os.environ, 'MKVSTUDIO_SAMPLE_PATH': str(root/'Samples/Видео.mp4')})
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args): pass
+        def do_GET(self):
+            try:
+                if self.path == '/slow': time.sleep(2)
+                if self.path == '/redirect':
+                    self.send_response(302); self.send_header('Location', '/ok'); self.end_headers(); return
+                self.send_response(200)
+                if self.path == '/large-header': self.send_header('Content-Length', '1000000')
+                self.end_headers()
+                self.wfile.write(b'x'*4096 if self.path in ['/large-header','/large-chunks'] else b'okay')
+            except (BrokenPipeError, ConnectionResetError): pass
+    server = ThreadingHTTPServer(('127.0.0.1',0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        subprocess.run([str(binary)], check=True, env={**os.environ, 'MKVSTUDIO_SAMPLE_PATH': str(root/'Samples/Видео.mp4'), 'MKVSTUDIO_HTTP_FIXTURE': f'http://127.0.0.1:{server.server_port}'})
+    finally: server.shutdown(); server.server_close()

@@ -1,0 +1,4 @@
+{"batch":1,"cpu_seconds":0.56347399999999992,"end_rss_mib":46.109375,"iterations":100,"peak_rss_mib":46.140625,"scenario":"metadata_fixture_batch","wall_s":0.56696403026580811}
+{"batch":2,"cpu_seconds":0.532053,"end_rss_mib":46.296875,"iterations":100,"peak_rss_mib":46.328125,"scenario":"metadata_fixture_batch","wall_s":0.53300011157989502}
+{"batch":3,"cpu_seconds":0.52511499999999978,"end_rss_mib":46.3125,"iterations":100,"peak_rss_mib":46.34375,"scenario":"metadata_fixture_batch","wall_s":0.52548003196716309}
+{"cpu_pct":0.0068408166885443461,"rss_mib":46.296875,"scenario":"metadata_after_idle","wall_s":5.3063839673995972}

@@ -24,8 +24,9 @@ extension AppState {
         defer { if metadataGeneration == generation { isLoadingTags = false; metadataToken = nil } }
         do {
             let tags = try await file.isMatroska ? MetadataService.readTags(file.url, executable: tools.mkvextract, token: token) : MatroskaTags(xml: "<Tags/>")
-            let language = try project.tagEdits?.language ?? tags.preferredLanguage()
-            let values = try await Task.detached { try tags.values(language: language) }.value
+            let scope = project.tagEdits?.scope ?? 50
+            let language = try project.tagEdits?.language ?? tags.preferredLanguage(scope: scope)
+            let values = try await Task.detached { try tags.values(language: language, scope: scope) }.value
             guard generation == metadataGeneration, files.first?.id == file.id else { return }
             if project.tagEdits == nil { project.tagEdits = TagEdits(language: language) }
             tagValues = values; tagsSourceID = file.id
@@ -39,7 +40,7 @@ extension AppState {
         else { project.tagEdits?.values[key] = value }
     }
     func setTagLanguage(_ language: String) {
-        project.tagEdits = TagEdits(language: language)
+        project.tagEdits = TagEdits(language: language, targetTypeValue: project.tagEdits?.targetTypeValue)
         tagsSourceID = nil
         Task { await loadTags() }
     }

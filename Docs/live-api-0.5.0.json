@@ -1,0 +1,25 @@
+{
+  "available_tag_fields" : [
+    "ACTOR",
+    "COMPOSER",
+    "DATE_RELEASED",
+    "DESCRIPTION",
+    "DIRECTOR",
+    "GENRE",
+    "PRODUCER",
+    "SCREENPLAY_BY",
+    "SUMMARY",
+    "TITLE"
+  ],
+  "film_id" : 301,
+  "poster_bytes" : 213278,
+  "poster_type" : "image\/jpeg",
+  "preview_height" : 480,
+  "preview_width" : 320,
+  "query" : "Матрица",
+  "result_count" : 2,
+  "service" : "Kinopoisk Unofficial API",
+  "status" : "PASS",
+  "title" : "Матрица",
+  "year" : 1999
+}

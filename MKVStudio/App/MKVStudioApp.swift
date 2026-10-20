@@ -23,6 +23,15 @@ struct MKVStudioApp: App {
 struct StudioSettings: View {
     @Bindable var state: AppState
     var body: some View {
+        TabView {
+            general.tabItem { Label("Основные", systemImage: "gearshape") }
+            KinopoiskSettingsView().tabItem { Label("Поиск информации", systemImage: "magnifyingglass") }
+        }
+        .padding(16).frame(width: 740, height: 670)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .background(StudioWindowAnchor(role: .settings))
+    }
+    private var general: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Настройки").font(.title2.weight(.semibold))
             GroupBox("Оформление") {
@@ -56,15 +65,13 @@ struct StudioSettings: View {
               }.padding(12)
             }
             HStack {
-                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0")").foregroundStyle(.secondary)
+                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.5.0")").foregroundStyle(.secondary)
                 Spacer()
                 Link("Документация mkvmerge", destination: URL(string: "https://man.archlinux.org/man/mkvmerge.1.en")!)
             }
             Spacer(minLength: 0)
         }
-        .padding(24).frame(width: 700, height: 650)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .background(StudioWindowAnchor(role: .settings))
+        .padding(20)
     }
 }
 
