@@ -40,7 +40,7 @@ struct StudioSettings: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(name).font(.callout.monospaced())
-                            Text(state.toolPath(name)).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).help(state.toolPath(name))
+                            Text(state.toolPath(name)).font(.body).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).help(state.toolPath(name))
                         }
                         Spacer()
                         Button("Выбрать…") { state.chooseTool(name) }
@@ -51,12 +51,12 @@ struct StudioSettings: View {
                     Button("Проверить") { Task { await state.detectTools() } }
                 }
                 Text("Установщик MKVStudio добавляет недостающие консольные утилиты. Здесь можно выбрать собственную версию каждой программы.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.body).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
               }.padding(12)
             }
             HStack {
-                Text("MKVStudio 0.3.0").foregroundStyle(.secondary)
+                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.1")").foregroundStyle(.secondary)
                 Spacer()
                 Link("Документация mkvmerge", destination: URL(string: "https://man.archlinux.org/man/mkvmerge.1.en")!)
             }
@@ -64,6 +64,7 @@ struct StudioSettings: View {
         }
         .padding(24).frame(width: 700, height: 650)
         .background(Color(nsColor: .windowBackgroundColor))
+        .background(StudioWindowAnchor(role: .settings))
     }
 }
 
@@ -72,8 +73,8 @@ struct StudioSettings: View {
 
 @MainActor final class StudioAppDelegate: NSObject, NSApplicationDelegate {
     var state: AppState?
+    func applicationWillTerminate(_ notification: Notification) { state?.finishSession() }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        state?.saveWorkspace()
         guard let state, state.activeJob != nil || state.queueRunning else { return .terminateNow }
         let alert = NSAlert()
         alert.messageText = "Обработка ещё не завершена"

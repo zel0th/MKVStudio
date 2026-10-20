@@ -84,7 +84,7 @@ private struct ChapterTimeline: View {
                 }.frame(height: 32)
             }.frame(height: 32)
             HStack { Text("00:00:00"); Spacer(); Text(String(MediaTime.format(Int64(min(duration, 35_999_999) * 1e9)).prefix(8))) }
-                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                .font(.body.monospacedDigit()).foregroundStyle(.secondary)
         }
     }
 }
@@ -99,7 +99,7 @@ struct ChapterInspector: View {
                     TextField("Начало", text: binding(chapter, \.start))
                     TextField("Конец", text: binding(chapter, \.end), prompt: Text("Не задан"))
                     TextField("Язык", text: binding(chapter, \.language))
-                    Text("Время: ЧЧ:ММ:СС.ннн. Конец можно оставить пустым.").font(.caption).foregroundStyle(.secondary)
+                    Text("Время: ЧЧ:ММ:СС.ннн. Конец можно оставить пустым.").font(.body).foregroundStyle(.secondary)
                 }
                 Section("Положение на шкале") {
                     Slider(value: Binding(get: { min(chapter.seconds, state.timelineDuration) }, set: { seconds in state.updateChapter(chapter.id) { $0.start = MediaTime.format(Int64(seconds * 1e9)) } }), in: 0...state.timelineDuration)
@@ -108,7 +108,7 @@ struct ChapterInspector: View {
                 }
             } else { Text("Выберите главу в таблице или на временной шкале.").foregroundStyle(.secondary) }
             Section {
-                Text("Редактор сохраняет редакции, вложенность, UID, флаги и дополнительные названия импортированного XML. Изменения войдут в новый MKV при сборке.").font(.caption).foregroundStyle(.secondary)
+                Text("Редактор сохраняет редакции, вложенность, UID, флаги и дополнительные названия импортированного XML. Изменения войдут в новый MKV при сборке.").font(.body).foregroundStyle(.secondary)
             }
         }.formStyle(.grouped)
     }

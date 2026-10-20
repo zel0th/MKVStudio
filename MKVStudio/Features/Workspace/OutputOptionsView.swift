@@ -17,7 +17,7 @@ struct OutputOptionsView: View {
                         Text("\(index + 1)").font(.callout.monospacedDigit()).foregroundStyle(.secondary).frame(width: 24)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(file.fileName).lineLimit(1)
-                            Text(file.tracks.filter(\.included).map { $0.kind.title }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                            Text(file.tracks.filter(\.included).map { $0.kind.title }.joined(separator: " · ")).font(.body).foregroundStyle(.secondary)
                         }
                         Spacer()
                         Text(file.duration).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
@@ -33,12 +33,12 @@ struct OutputOptionsView: View {
                 }
                 if state.project.split.enabled {
                     TextField("Параметры", text: splitBinding(\.value), prompt: Text(state.project.split.mode.example))
-                    Text("Пример: \(state.project.split.mode.example)").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text("Пример: \(state.project.split.mode.example)").font(.body).foregroundStyle(.secondary).textSelection(.enabled)
                     TextField("Максимум частей", value: splitBinding(\.maxFiles), format: .number.grouping(.never))
-                    Text("0 — без ограничения").font(.caption).foregroundStyle(.secondary)
+                    Text("0 — без ограничения").font(.body).foregroundStyle(.secondary)
                     Toggle("Связать части между собой", isOn: splitBinding(\.linkFiles))
                     if state.project.split.mode == .parts {
-                        Text("Знак + перед следующим диапазоном объединяет его с предыдущим. Пустое начало означает конец предыдущего фрагмента, пустой конец — конец файла.").font(.caption).foregroundStyle(.secondary)
+                        Text("Знак + перед следующим диапазоном объединяет его с предыдущим. Пустое начало означает конец предыдущего фрагмента, пустой конец — конец файла.").font(.body).foregroundStyle(.secondary)
                     }
                     Text("Разрезы проходят по ключевым кадрам: время и размер могут отличаться от заданных. Части part-001.mkv, part-002.mkv… появятся в новой папке .parts.").font(.callout).foregroundStyle(.secondary)
                 }

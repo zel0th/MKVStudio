@@ -9,6 +9,31 @@ struct ValidatedTools: Sendable {
 }
 enum ToolLocator {
     static let names = ["mkvmerge", "mkvinfo", "mkvextract", "mkvpropedit"]
+    static let standardDirectories = [
+        "/opt/homebrew/bin", "/usr/local/bin",
+        "/Library/Application Support/MKVStudio/ConsoleTools/bin"
+    ]
+
+    static func selectionDirectory(for name: String? = nil, currentExecutable: URL? = nil,
+                                   defaults: UserDefaults = .standard) -> URL {
+        let overrides = defaults.dictionary(forKey: "consoleToolPaths") as? [String: String] ?? [:]
+        let selectedNames = name.map { [$0] } ?? names
+        let explicit = selectedNames.compactMap { overrides[$0] }.map {
+            URL(fileURLWithPath: $0).deletingLastPathComponent()
+        }
+        let configured = defaults.string(forKey: "toolsPath").map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let candidates = explicit + [currentExecutable?.deletingLastPathComponent(), configured].compactMap { $0 }
+        let standard = standardDirectories.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        func exists(_ url: URL) -> Bool {
+            var directory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: url.path, isDirectory: &directory) && directory.boolValue
+        }
+        if let current = candidates.first(where: exists) { return current }
+        if let installed = standard.first(where: { directory in
+            selectedNames.contains { FileManager.default.isExecutableFile(atPath: directory.appendingPathComponent($0).path) }
+        }) { return installed }
+        return standard.first(where: exists) ?? URL(fileURLWithPath: "/Applications", isDirectory: true)
+    }
     static func validate(directory: URL) throws -> ValidatedTools {
         try validate(paths: Dictionary(uniqueKeysWithValues: names.map { ($0, directory.appendingPathComponent($0).path) }))
     }
@@ -22,8 +47,7 @@ enum ToolLocator {
     static func discover(defaults: UserDefaults = .standard) -> ValidatedTools? {
         let overrides = defaults.dictionary(forKey: "consoleToolPaths") as? [String: String] ?? [:]
         var directories = [defaults.string(forKey: "toolsPath")].compactMap { $0 }
-        directories += ["/opt/homebrew/bin", "/usr/local/bin"]
-        directories += ["/Library/Application Support/MKVStudio/ConsoleTools/bin"]
+        directories += standardDirectories
         directories += (ProcessInfo.processInfo.environment["PATH"] ?? "").components(separatedBy: ":").filter { $0.hasPrefix("/") }
         var paths: [String: String] = [:]
         for name in names {

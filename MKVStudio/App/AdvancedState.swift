@@ -14,15 +14,19 @@ extension AppState {
     }
     func chooseTool(_ name: String) {
         let panel = NSOpenPanel(); panel.message = "Выберите исполняемый файл \(name)."
+        panel.directoryURL = ToolLocator.selectionDirectory(
+            for: name, currentExecutable: tools?.executables.first { $0.lastPathComponent == name }, defaults: defaults)
+        panel.canChooseDirectories = false
+        panel.resolvesAliases = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard FileManager.default.isExecutableFile(atPath: url.path) else { errorMessage = "Этот файл нельзя запустить."; return }
-        var paths = UserDefaults.standard.dictionary(forKey: "consoleToolPaths") as? [String: String] ?? [:]
+        var paths = defaults.dictionary(forKey: "consoleToolPaths") as? [String: String] ?? [:]
         paths[name] = url.path
-        UserDefaults.standard.set(paths, forKey: "consoleToolPaths")
+        defaults.set(paths, forKey: "consoleToolPaths")
         Task { await detectTools() }
     }
     func toolPath(_ name: String) -> String {
-        if let explicit = (UserDefaults.standard.dictionary(forKey: "consoleToolPaths") as? [String: String])?[name] { return explicit }
+        if let explicit = (defaults.dictionary(forKey: "consoleToolPaths") as? [String: String])?[name] { return explicit }
         return tools?.executables.first { $0.lastPathComponent == name }?.path ?? "Не найден"
     }
     func moveFile(_ id: UUID, offset: Int) {

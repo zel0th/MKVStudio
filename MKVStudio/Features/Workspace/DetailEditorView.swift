@@ -45,7 +45,7 @@ struct DetailEditorView: View {
                             Image(systemName: track.kind.symbol).foregroundStyle(track.kind == .video ? Color.blue : track.kind == .audio ? Color.green : Color.orange).frame(width: 20)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(track.name.isEmpty ? track.kind.title : track.name).lineLimit(1)
-                                Text(track.details.isEmpty ? track.kind.title : track.details).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                Text(track.details.isEmpty ? track.kind.title : track.details).font(.body).foregroundStyle(.secondary).lineLimit(1)
                             }
                         }
                         .padding(.vertical, 7).opacity(track.included ? 1 : 0.45)
@@ -55,12 +55,12 @@ struct DetailEditorView: View {
                         }
                     }.width(min: 145, ideal: 190)
                     TableColumn("Кодек") { Text($0.codec).font(.callout).lineLimit(1) }.width(min: 90, ideal: 110)
-                    TableColumn("Язык") { Text($0.language.uppercased()).font(.caption.monospaced()) }.width(60)
+                    TableColumn("Язык") { Text($0.language.uppercased()).font(.body.monospaced()) }.width(60)
                     TableColumn("Флаги") { track in
                         HStack(spacing: 8) {
                             if track.defaultTrack { Image(systemName: "star.fill").foregroundStyle(.orange).help("По умолчанию") }
                             if track.forced { Image(systemName: "flag.fill").foregroundStyle(.blue).help("Принудительно") }
-                        }.font(.caption)
+                        }.font(.body)
                     }.width(55)
                 }
                 .tableStyle(.inset)
@@ -69,7 +69,7 @@ struct DetailEditorView: View {
                     Label("Исходные файлы сохраняются", systemImage: "checkmark.shield").foregroundStyle(.secondary)
                     Spacer()
                     Text("\(state.files.count) файл(ов)").foregroundStyle(.secondary)
-                }.font(.caption).padding(18)
+                }.font(.body).padding(18)
             }
         }
     }

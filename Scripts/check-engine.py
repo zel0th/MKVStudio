@@ -2,7 +2,7 @@
 from pathlib import Path
 import os, re, subprocess, tempfile
 root = Path(__file__).resolve().parent.parent
-source = (root / 'Tests/EngineTests.swift').read_text()
+source = '\n'.join(p.read_text() for p in sorted((root / 'Tests').glob('*.swift')))
 source = source.replace('import Testing\n', '').replace('@testable import MKVStudio\n', '')
 source = re.sub(r'^\s*@(Test|Suite)\([^\n]*\)\n', '\n', source, flags=re.M)
 source = source.replace('try #require(', 'try require(')
@@ -43,7 +43,12 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try await tests.legacyPersistence(); print("PASS legacy projects and time validation")
         try await tests.boundedOutput(); print("PASS bounded capture and UI mailbox")
         try await tests.independentTools(); print("PASS independent console executable paths")
-        print("15 integration checks passed")
+        let session = SessionTests()
+        try session.removeLastSource(); print("PASS last-source removal clears output and title")
+        try session.freshSession(); print("PASS fresh launch, termination, queue and preferences")
+        try session.toolDirectories(); print("PASS tool picker initial directories")
+        try session.settingsPlacement(); print("PASS settings placement across display geometries")
+        print("19 integration checks passed")
     }
 }
 '''
@@ -52,5 +57,6 @@ with tempfile.TemporaryDirectory(prefix='mkvstudio-checks-') as folder:
     check = folder / 'Checks.swift'; check.write_text(source + helpers)
     binary = folder / 'checks'
     files = sorted((root / 'MKVStudio/Core/Models').glob('*.swift')) + sorted((root / 'MKVStudio/Core/Services').glob('*.swift'))
+    files += [root / 'MKVStudio/App' / name for name in ['AppState.swift', 'AdvancedState.swift', 'WindowStyling.swift']]
     subprocess.run(['swiftc', '-swift-version', '6', '-parse-as-library', '-module-cache-path', str(Path(tempfile.gettempdir()) / 'MKVStudio-check-modules'), *map(str, files), str(check), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True, env={**os.environ, 'MKVSTUDIO_SAMPLE_PATH': str(root/'Samples/Видео.mp4')})

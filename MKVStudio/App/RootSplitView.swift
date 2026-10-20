@@ -25,7 +25,7 @@ struct RootSplitView: View {
                 InspectorView(state: state).inspectorColumnWidth(min: 260, ideal: 380, max: 380)
             }
         }
-        .onChange(of: state.project) { state.scheduleWorkspaceSave() }
+        .background(StudioWindowAnchor(role: .main))
         .preferredColorScheme(state.appearance == "light" ? .light : state.appearance == "dark" ? .dark : nil)
         .onChange(of: state.selectedTrackID) {
             if let source = state.trackSource { state.selectedFileID = source.id }
@@ -63,12 +63,13 @@ struct OutputBar: View {
             HStack(spacing: 12) {
                 Image(systemName: "arrow.down.doc").font(.title3).foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(state.project.split.enabled ? "Папка с частями" : "Файл результата").font(.caption).foregroundStyle(.secondary)
+                    Text(state.project.split.enabled ? "Папка с частями" : "Файл результата").font(.body).foregroundStyle(.secondary)
                     HStack {
-                        Text(state.project.outputPath.isEmpty ? "Выберите место сохранения" : MKVCommandBuilder.destination(state.project).lastPathComponent)
-                            .font(.callout).lineLimit(1).truncationMode(.middle).help(MKVCommandBuilder.destination(state.project).path)
+                        Text(state.files.isEmpty ? "Сначала добавьте исходные файлы" : state.project.outputPath.isEmpty ? "Выберите место сохранения" : MKVCommandBuilder.destination(state.project).lastPathComponent)
+                            .font(.body).lineLimit(2).truncationMode(.middle)
+                            .help(state.files.isEmpty || state.project.outputPath.isEmpty ? "Место сохранения появится после добавления файлов." : MKVCommandBuilder.destination(state.project).path)
                         Spacer(minLength: 4)
-                        Button("Выбрать…", action: state.chooseOutput).controlSize(.small)
+                        Button("Выбрать…", action: state.chooseOutput).disabled(state.files.isEmpty)
                     }
                 }
             }

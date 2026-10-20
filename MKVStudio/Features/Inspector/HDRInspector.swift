@@ -24,13 +24,13 @@ struct HDRInspector: View {
                     TextField(field.title, text: binding(field), prompt: Text("Сохранить"))
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Координаты R, G, B").font(.caption)
+                    Text("Координаты R, G, B").font(.body)
                     TextField("Rx,Ry,Gx,Gy,Bx,By", text: binding(.chromaticity)).labelsHidden()
-                    Text("Белая точка x, y").font(.caption)
+                    Text("Белая точка x, y").font(.body)
                     TextField("Например 0.3127,0.3290", text: binding(.white)).labelsHidden()
                 }
             }
-            Text("Пустое поле сохраняет исходное значение. Меняются только метаданные: это не преобразование SDR в HDR и не изменение глубины видеопотока.").font(.caption).foregroundStyle(.secondary)
+            Text("Пустое поле сохраняет исходное значение. Меняются только метаданные: это не преобразование SDR в HDR и не изменение глубины видеопотока.").font(.body).foregroundStyle(.secondary)
         }
     }
     private func binding(_ field: HDRField) -> Binding<String> {

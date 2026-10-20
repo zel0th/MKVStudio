@@ -21,7 +21,7 @@ struct AttachmentsView: View {
                         Image(systemName: item.mimeType.hasPrefix("image/") ? "photo" : "doc")
                         VStack(alignment: .leading) {
                             TextField("Имя вложения", text: $item.name)
-                            Text(item.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
+                            Text(item.url.lastPathComponent).font(.body).foregroundStyle(.secondary)
                         }
                         Button { state.project.attachments.removeAll { $0.id == item.id } } label: { Image(systemName: "minus.circle") }.help("Убрать вложение")
                     }
@@ -35,7 +35,7 @@ struct AttachmentsView: View {
                         Toggle(isOn: $attachment.included) {
                             VStack(alignment: .leading) {
                                 Text(attachment.name)
-                                Text("\(attachment.mimeType) · \(ByteCountFormatter.string(fromByteCount: attachment.size, countStyle: .file))").font(.caption).foregroundStyle(.secondary)
+                                Text("\(attachment.mimeType) · \(ByteCountFormatter.string(fromByteCount: attachment.size, countStyle: .file))").font(.body).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -76,11 +76,11 @@ struct InformationView: View {
                     .help("Название, языки и флаги дорожек из инспектора; без изменения состава дорожек и задержек")
             }
             ScrollView([.vertical, .horizontal]) {
-                Text(state.infoText).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                Text(state.infoText).font(.system(.body, design: .monospaced)).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading).padding(16)
             }
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
-            Text("Структура контейнера · mkvinfo").font(.caption).foregroundStyle(.secondary)
+            Text("Структура контейнера · mkvinfo").font(.body).foregroundStyle(.secondary)
         }.padding(24)
         .onChange(of: state.selectedFileID) {
             if state.trackSource?.id != state.selectedFileID { state.selectedTrackID = state.selectedFile?.tracks.first?.id }
@@ -115,7 +115,7 @@ struct QueueView: View {
                             Image(systemName: icon(job.state)).font(.title2).foregroundStyle(color(job.state)).frame(width: 28)
                             VStack(alignment: .leading, spacing: 7) {
                                 Text(job.title).font(.headline).lineLimit(1)
-                                Text(job.state.title).font(.caption).foregroundStyle(.secondary)
+                                Text(job.state.title).font(.body).foregroundStyle(.secondary)
                                 if job.state == .running { ProgressView(value: job.progress) }
                             }
                             Spacer()
@@ -130,7 +130,7 @@ struct QueueView: View {
                 Divider()
                 ScrollView {
                     Text(state.selectedJob?.log.isEmpty == false ? state.selectedJob!.log : "Здесь появится отчёт выбранного задания.")
-                        .font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                        .font(.system(.body, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(16)
                 }.frame(height: 180).background(Color(nsColor: .controlBackgroundColor))
             }
             Divider()

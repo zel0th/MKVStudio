@@ -28,7 +28,7 @@ struct SidebarView: View {
                             Image(systemName: "doc.zipper").foregroundStyle(.secondary).padding(.top, 2)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(file.fileName).lineLimit(2).font(.callout)
-                                Text("\(file.fileSize) · \(file.tracks.count) дор.").font(.caption).foregroundStyle(.secondary)
+                                Text("\(file.fileSize) · \(file.tracks.count) дор.").font(.body).foregroundStyle(.secondary)
                             }
                         }
                         .padding(.vertical, 5)
@@ -42,7 +42,7 @@ struct SidebarView: View {
                     .help(file.url.path)
                 }
                 if state.files.isEmpty {
-                    Text("Файлы появятся здесь").font(.caption).foregroundStyle(.tertiary)
+                    Text("Файлы появятся здесь").font(.body).foregroundStyle(.secondary)
                 }
             } header: {
                 HStack { Text("Исходные файлы"); Spacer(); Text("\(state.files.count)") }
@@ -53,9 +53,9 @@ struct SidebarView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 7) {
                     StatusDot(available: state.tools != nil)
-                    Text(state.tools == nil ? "Нужны консольные утилиты" : "Консольные утилиты готовы").font(.caption)
+                    Text(state.tools == nil ? "Нужны консольные утилиты" : "Консольные утилиты готовы").font(.body)
                 }
-                Text("Без перекодирования").font(.caption).foregroundStyle(.secondary)
+                Text("Без перекодирования").font(.body).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading).padding(16)
         }

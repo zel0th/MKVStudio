@@ -14,7 +14,7 @@ struct InspectorView: View {
                 Form {
                     Section("Результат") {
                         LabeledContent("Статус", value: job.state.title)
-                        Text(job.output.path).font(.caption).textSelection(.enabled)
+                        Text(job.output.path).font(.body).textSelection(.enabled)
                         if job.state == .finished || job.state == .warning { Button("Показать в Finder") { state.reveal(job.output) } }
                     }
                     Section("Инструмент") { Text(job.executable.lastPathComponent).font(.callout.monospaced()) }
@@ -43,7 +43,7 @@ struct InspectorView: View {
                         }
                         Section("Синхронизация") {
                             TextField("Задержка, мс", value: trackBinding(track, \.delayMS), format: .number.grouping(.never))
-                            Text("Положительное значение сдвигает дорожку вперёд.").font(.caption).foregroundStyle(.secondary)
+                            Text("Положительное значение сдвигает дорожку вперёд.").font(.body).foregroundStyle(.secondary)
                         }
                         if track.kind == .video { HDRInspector(state: state, track: track) }
                         if let source = state.trackSource {

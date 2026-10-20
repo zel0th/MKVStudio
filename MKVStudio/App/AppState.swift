@@ -2,6 +2,10 @@ import AppKit
 import Observation
 import UniformTypeIdentifiers
 
+extension UTType {
+    static let studioProject = UTType(exportedAs: "com.zshfan.mkvstudio.project", conformingTo: .json)
+}
+
 @MainActor @Observable
 final class AppState {
     var project = StudioProject()
@@ -24,14 +28,17 @@ final class AppState {
     var isReadingInfo = false
     var queueRunning = false
     var appearance = "system" {
-        didSet { UserDefaults.standard.set(appearance, forKey: "appearance") }
+        didSet { if persistenceEnabled { defaults.set(appearance, forKey: "appearance") } }
     }
     private var token: ProcessToken?
     @ObservationIgnored private let persistenceEnabled: Bool
-    init(persistenceEnabled: Bool = true) { self.persistenceEnabled = persistenceEnabled }
+    @ObservationIgnored let defaults: UserDefaults
+    init(persistenceEnabled: Bool = true, defaults: UserDefaults = .standard) {
+        self.persistenceEnabled = persistenceEnabled
+        self.defaults = defaults
+    }
     var activeProcessID: Int32? { token?.processIdentifier }
     private var bootstrapped = false
-    @ObservationIgnored private var workspaceSaveTask: Task<Void, Never>?
     private let historyKey = "MKVStudio.queue.v1"
 
     var files: [MediaFileItem] { project.files }
@@ -46,22 +53,24 @@ final class AppState {
 
     func bootstrap() async {
         guard !bootstrapped else { return }; bootstrapped = true
-        if let data = UserDefaults.standard.data(forKey: "MKVStudio.workspace.v1"),
-           let saved = try? JSONDecoder().decode(StudioProject.self, from: data), saved.version == 1 {
-            project = saved; selectedFileID = saved.files.first?.id; selectedTrackID = saved.files.first?.tracks.first?.id
-        }
-        appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"
-        if let data = UserDefaults.standard.data(forKey: historyKey), let saved = try? JSONDecoder().decode([QueueJob].self, from: data) {
+        restorePreferencesAndQueue()
+        await detectTools()
+    }
+    func restorePreferencesAndQueue() {
+        // A workspace belongs to this session. Only explicitly saved project files reopen it.
+        resetWorkspace()
+        if persistenceEnabled { defaults.removeObject(forKey: "MKVStudio.workspace.v1") }
+        appearance = defaults.string(forKey: "appearance") ?? "system"
+        if let data = defaults.data(forKey: historyKey), let saved = try? JSONDecoder().decode([QueueJob].self, from: data) {
             jobs = saved.map { job in
                 var job = job
                 if job.state == .running { job.state = .failed; job.log += "\nПриложение было закрыто во время выполнения. Временные данные: \(job.stagingDirectory.path)" }
                 return job
             }
         }
-        await detectTools()
     }
     func detectTools() async {
-        tools = ToolLocator.discover()
+        tools = ToolLocator.discover(defaults: defaults)
         guard let tools else { toolVersion = "Консольные утилиты не найдены"; return }
         do {
             var mergeVersion = ""
@@ -77,11 +86,12 @@ final class AppState {
     func chooseTools() {
         let panel = NSOpenPanel(); panel.canChooseFiles = false; panel.canChooseDirectories = true
         panel.message = "Выберите папку с mkvmerge, mkvinfo, mkvextract и mkvpropedit."
+        panel.directoryURL = ToolLocator.selectionDirectory(currentExecutable: tools?.mkvmerge, defaults: defaults)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             _ = try ToolLocator.validate(directory: url)
-            UserDefaults.standard.set(url.path, forKey: "toolsPath")
-            UserDefaults.standard.removeObject(forKey: "consoleToolPaths")
+            defaults.set(url.path, forKey: "toolsPath")
+            defaults.removeObject(forKey: "consoleToolPaths")
             Task { await detectTools() }
         } catch { report(error) }
     }
@@ -139,11 +149,19 @@ final class AppState {
         }
     }
     func removeFile(_ id: UUID) {
+        guard files.contains(where: { $0.id == id }) else { return }
         project.files.removeAll { $0.id == id }
+        if files.isEmpty {
+            // Keep deliberately edited chapters/attachments, but discard the previous source's identity.
+            project.title = ""
+            project.outputPath = ""
+            infoText = "Выберите исходный Matroska-файл, чтобы изучить его структуру."
+        }
         if selectedTrack == nil { selectedTrackID = tracks.first?.id }
         if !files.contains(where: { $0.id == selectedFileID }) { selectedFileID = files.first?.id }
     }
     func chooseOutput() {
+        guard !files.isEmpty else { return }
         let panel = NSSavePanel(); panel.nameFieldStringValue = URL(fileURLWithPath: project.outputPath).lastPathComponent
         if !project.outputPath.isEmpty { panel.directoryURL = URL(fileURLWithPath: project.outputPath).deletingLastPathComponent() }
         panel.allowedContentTypes = [UTType(filenameExtension: "mkv") ?? .data]
@@ -236,20 +254,21 @@ final class AppState {
     private func updateJob(_ id: UUID, _ edit: (inout QueueJob) -> Void) {
         guard let i = jobs.firstIndex(where: { $0.id == id }) else { return }; edit(&jobs[i])
     }
-    func scheduleWorkspaceSave() {
-        workspaceSaveTask?.cancel()
-        workspaceSaveTask = Task { [weak self] in
-            do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
-            self?.saveWorkspace()
-        }
+    func resetWorkspace() {
+        project = StudioProject()
+        selectedTrackID = nil; selectedFileID = nil
+        selectedChapterID = nil; selectedEditionID = nil
+        selectedSection = .workspace
+        infoText = "Выберите исходный Matroska-файл, чтобы изучить его структуру."
     }
-    func saveWorkspace() {
-        guard persistenceEnabled else { return }
-        if let data = try? JSONEncoder().encode(project) { UserDefaults.standard.set(data, forKey: "MKVStudio.workspace.v1") }
+    func finishSession() {
+        resetWorkspace()
+        if persistenceEnabled { defaults.removeObject(forKey: "MKVStudio.workspace.v1") }
+        saveHistory()
     }
     private func saveHistory() {
         guard persistenceEnabled else { return }
-        if let data = try? JSONEncoder().encode(jobs) { UserDefaults.standard.set(data, forKey: historyKey) }
+        if let data = try? JSONEncoder().encode(jobs) { defaults.set(data, forKey: historyKey) }
     }
     func clearFinishedJobs() {
         jobs.removeAll { $0.state != .running && $0.state != .waiting }; saveHistory()
@@ -281,6 +300,8 @@ final class AppState {
     }
     func saveProject() {
         let panel = NSSavePanel(); panel.nameFieldStringValue = "Проект.mkvstudio"; panel.canCreateDirectories = true
+        panel.allowedContentTypes = [.studioProject]
+        panel.allowsOtherFileTypes = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do { let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]; try encoder.encode(project).write(to: url, options: .atomic) }
         catch { report(error) }
@@ -288,6 +309,9 @@ final class AppState {
     func openProject() {
         guard !isImporting else { return }
         let panel = NSOpenPanel(); panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.studioProject]
+        panel.allowsOtherFileTypes = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let loaded = try JSONDecoder().decode(StudioProject.self, from: Data(contentsOf: url))
