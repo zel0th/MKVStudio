@@ -1,0 +1,22 @@
+name: macOS console-tools verification
+on: [workflow_dispatch]
+jobs:
+  verify:
+    # Supply a macOS ARM64 runner with Swift and the four console tools installed.
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify console utilities
+        run: |
+          for tool in mkvmerge mkvinfo mkvextract mkvpropedit; do
+            command -v "$tool"
+            "$tool" --version
+          done
+      - name: Integration tests
+        run: python3 Scripts/check-engine.py
+      - name: Build native application
+        run: bash Scripts/build-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MKVStudio-macOS
+          path: build/*.zip

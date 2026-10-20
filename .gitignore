@@ -1,0 +1,21 @@
+.build/
+build/
+.DS_Store
+Backups/
+*.xcuserstate
+xcuserdata/
+*.xcuserdatad/
+*.mkvstudio
+*.mkv
+*.wav
+Samples/Проверочный ролик — дорожка 1/
+Docs/package-*.txt
+Docs/verification.txt
+Docs/ui-idle-baseline.csv
+Docs/ui-performance.csv
+Docs/queue-benchmark.jsonl
+Docs/queue-benchmark-final.jsonl
+Docs/performance.md
+Docs/*.png
+Docs/integration-checks.txt
+Samples/English.srt
