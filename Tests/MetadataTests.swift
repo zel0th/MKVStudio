@@ -91,6 +91,46 @@ struct MetadataTests {
         #expect(try Data(contentsOf: original) == before)
     }
 
+    @Test("MKV without Tags supports the editor, preview and first tag write")
+    @MainActor func absentTags() async throws {
+        let tools = try EngineTests().tools(), fixture = try Fixture()
+        defer { fixture.remove() }
+        let source = try await fixture.withoutTags(tools: tools), before = try Data(contentsOf: source)
+        let tags = try await MetadataService.readTags(source, executable: tools.mkvextract)
+        #expect(try tags.values(language: "ru").values.allSatisfy(\.isEmpty))
+        #expect(try tags.preferredLanguage() == "und")
+
+        let file = try await ToolLocator.identify(source, tools: tools)
+        let state = AppState(persistenceEnabled: false); state.tools = tools; state.project.files = [file]
+        await state.loadTags()
+        #expect(state.errorMessage == nil && state.tagsSourceID == file.id && !state.isLoadingTags)
+        #expect(state.tagValues.values.allSatisfy(\.isEmpty))
+        await state.previewTags(file: file)
+        let preview = try #require(state.previewURL, "Empty tags XML preview")
+        let previewTags = try MatroskaTags(xml: String(contentsOf: preview, encoding: .utf8))
+        #expect(try previewTags.values(language: "ru").values.allSatisfy(\.isEmpty))
+        state.dismissPreview()
+
+        // Exercise first-write on a staged file with no Tags, before any remux adds statistics.
+        state.project.outputPath = fixture.directory.appendingPathComponent("first-tags.mkv").path
+        state.project.tagEdits = TagEdits(language: "ru", values: ["TITLE": "Первое название"])
+        let job = try MKVCommandBuilder.makeJob(project: state.project, tools: tools)
+        try MKVCommandBuilder.prepare(job)
+        try FileManager.default.copyItem(at: source, to: job.stagedOutput)
+        _ = try await MetadataService.applyTags(job, token: ProcessToken())
+        let written = try await MetadataService.readTags(job.stagedOutput, executable: tools.mkvextract)
+        #expect(try written.values(language: "ru")["TITLE"] == "Первое название")
+        #expect(try Data(contentsOf: source) == before)
+
+        // Empty successful extraction is supported; failed extraction and malformed XML still fail.
+        var failed = false
+        do { _ = try await MetadataService.readTags(fixture.directory.appendingPathComponent("missing.mkv"), executable: tools.mkvextract) }
+        catch { failed = true }
+        #expect(failed)
+        #expect(throws: (any Error).self) { _ = try MatroskaTags(xml: "") }
+        #expect(throws: (any Error).self) { _ = try MatroskaTags(xml: "<wrong-root/>") }
+    }
+
     @Test("Attachment preview extraction is bounded and ignores path traversal in names")
     @MainActor func previews() async throws {
         let tools = try EngineTests().tools(), fixture = try Fixture()

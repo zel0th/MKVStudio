@@ -31,6 +31,14 @@ struct Fixture {
         #expect(result.exitCode == 0, "\(result.output)")
         return url
     }
+    func withoutTags(tools: ValidatedTools) async throws -> URL {
+        let url = try await original(tools: tools)
+        let removed = try await ProcessRunner.run(executable: tools.mkvpropedit, arguments: [url.path, "--tags", "all:"])
+        #expect(removed.exitCode == 0, removed.output)
+        let extracted = try await ProcessRunner.run(executable: tools.mkvextract, arguments: [url.path, "tags"])
+        #expect(extracted.exitCode == 0 && extracted.output.isEmpty, "Fixture must contain no Tags element")
+        return url
+    }
 }
 
 @Suite("Console utilities integration")

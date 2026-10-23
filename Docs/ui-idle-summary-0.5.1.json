@@ -1,0 +1,9 @@
+{
+  "scenario": "QA window idle after importing selected tags and remuxing an untagged MKV",
+  "samples": 367,
+  "duration_seconds": 19.953575290999996,
+  "cpu_average_percent": 0.5491703787512463,
+  "rss_start_mib": 183.375,
+  "rss_end_mib": 151.78125,
+  "rss_peak_mib": 183.984375
+}

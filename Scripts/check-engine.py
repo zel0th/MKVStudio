@@ -53,13 +53,15 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try metadata.preservation(); print("PASS standard tags, nesting, languages, targets and validation")
         try await metadata.realTags(); print("PASS real tag edits in remux, append and split; queue snapshot; unchanged streams")
         try await metadata.previews(); print("PASS attachment and tag previews, limits, safe paths and cleanup")
+        try await metadata.absentTags(); print("PASS absent Tags: editor, preview, first write and extraction errors")
         let kinopoisk = KinopoiskTests()
         try await kinopoisk.requests(); print("PASS API requests, schema and credential isolation")
         try await kinopoisk.failures(); print("PASS API failures, invalid images and cancellation")
         try await kinopoisk.importing(); print("PASS selected online tags/poster through real remux, queue persistence and unchanged streams")
         try await kinopoisk.atomicity(); print("PASS series scope, language conflicts, stale workspace and atomic import")
         try await kinopoisk.http(); print("PASS actual bounded HTTP transport, redirects and cancellation")
-        print("27 integration checks passed")
+        try await kinopoisk.untaggedSource(); print("PASS online selection and import for MKV without Tags; unchanged streams")
+        print("29 integration checks passed")
     }
 }
 '''

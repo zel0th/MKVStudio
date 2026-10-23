@@ -10,7 +10,12 @@ enum MetadataService {
     static func readTags(_ source: URL, executable: URL, token: ProcessToken = ProcessToken()) async throws -> MatroskaTags {
         let result = try await ProcessRunner.run(executable: executable, arguments: ["--ui-language", "en_US", source.path, "tags"], token: token, outputLimit: MatroskaTags.limit)
         guard result.exitCode == 0 else { throw StudioError.message(result.output) }
-        return try await Task.detached { try MatroskaTags(xml: result.output) }.value
+        return try await Task.detached {
+            // mkvextract succeeds with no output when the container has no Tags element.
+            let emptyCharacters = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{FEFF}"))
+            let xml = result.output.trimmingCharacters(in: emptyCharacters).isEmpty ? "<Tags/>" : result.output
+            return try MatroskaTags(xml: xml)
+        }.value
     }
     /// Patch the tags extracted from the actual result, after mkvmerge has mapped track/chapter UIDs.
     static func applyTags(_ job: QueueJob, token: ProcessToken) async throws -> String {

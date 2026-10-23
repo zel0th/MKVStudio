@@ -109,6 +109,50 @@ struct KinopoiskTests {
         }
         #expect(try Data(contentsOf: original) == before)
     }
+    @Test("Search selection and import work when the source MKV has no Tags element")
+    @MainActor func untaggedSource() async throws {
+        let tools = try EngineTests().tools(), fixture = try Fixture()
+        defer { fixture.remove() }
+        let original = try await fixture.withoutTags(tools: tools), before = try Data(contentsOf: original)
+        let file = try await ToolLocator.identify(original, tools: tools)
+        let cover = try Data(contentsOf: fixture.cover)
+        let client = KinopoiskClient(key: "test-key", transport: { request, _, poster in
+            if poster { return HTTPPayload(status: 200, data: cover) }
+            let json = request.url!.path == "/api/v1/staff" ? Self.peopleJSON : Self.filmJSON
+            return HTTPPayload(status: 200, data: Data(json.utf8))
+        })
+        let state = AppState(persistenceEnabled: false); state.tools = tools; state.project.files = [file]
+        let model = KinopoiskSearchModel(query: "Проверочный фильм"); model.client = client
+        model.select(try Self.details().film, state: state)
+        defer { model.cancel() }
+        for _ in 0..<500 {
+            if !model.busy { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(!model.busy && model.error == nil, model.error ?? "Selection did not finish")
+        let details = try #require(model.details, "Film card after reading a source with no tags")
+        #expect(model.preview != nil && model.baseline.values.allSatisfy(\.isEmpty))
+        try await state.applyKinopoisk(details, selection: .init(fields: ["TITLE", "DATE_RELEASED"]),
+                                      client: client, sourceID: file.id, generation: state.metadataGeneration)
+        #expect(state.project.tagEdits?.values == ["TITLE": "Проверочный фильм", "DATE_RELEASED": "1999"])
+        state.project.outputPath = fixture.directory.appendingPathComponent("first-online-tags.mkv").path
+        let job = try MKVCommandBuilder.makeJob(project: state.project, tools: tools)
+        try state.addJob(job); await state.execute(job.id)
+        #expect(state.jobs[0].state == .finished, state.jobs[0].log)
+        let result = try await MetadataService.readTags(job.output, executable: tools.mkvextract)
+        #expect(try result.values(language: "ru")["TITLE"] == "Проверочный фильм")
+        #expect(try result.values(language: "ru")["DATE_RELEASED"] == "1999")
+        #expect(try result.values(language: "ru")["ACTOR"] == "")
+        for track in file.tracks {
+            let a = fixture.directory.appendingPathComponent("untagged-before-\(track.sourceID).bin")
+            let b = fixture.directory.appendingPathComponent("untagged-after-\(track.sourceID).bin")
+            _ = try await ProcessRunner.run(executable: tools.mkvextract, arguments: [original.path, "tracks", "\(track.sourceID):\(a.path)"])
+            _ = try await ProcessRunner.run(executable: tools.mkvextract, arguments: [job.output.path, "tracks", "\(track.sourceID):\(b.path)"])
+            #expect(try Data(contentsOf: a) == Data(contentsOf: b))
+        }
+        #expect(try Data(contentsOf: original) == before)
+    }
+
     @Test("Series scope, language conflicts, stale workspaces and failed poster download are atomic")
     @MainActor func atomicity() async throws {
         let tools = try EngineTests().tools(), fixture = try Fixture(); defer { fixture.remove() }

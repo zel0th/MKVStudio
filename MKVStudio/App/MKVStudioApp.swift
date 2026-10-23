@@ -65,7 +65,7 @@ struct StudioSettings: View {
               }.padding(12)
             }
             HStack {
-                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.5.0")").foregroundStyle(.secondary)
+                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.5.1")").foregroundStyle(.secondary)
                 Spacer()
                 Link("Документация mkvmerge", destination: URL(string: "https://man.archlinux.org/man/mkvmerge.1.en")!)
             }
