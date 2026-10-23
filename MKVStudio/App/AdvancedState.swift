@@ -72,19 +72,20 @@ extension AppState {
         project.chapterDocument = document; project.useChapterEditor = true
         selectedEditionID = document.editions.first?.id; selectedChapterID = chapterRows.first?.id
     }
-    func extractChapters() {
+    func extractChapters() async {
         guard let file = selectedFile, file.isMatroska, let tools, !isLoadingChapters else { return }
+        let generation = metadataGeneration
+        let request = UUID(); chapterReadID = request
         isLoadingChapters = true
-        Task {
-            defer { isLoadingChapters = false }
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("MKVStudio-chapters-\(UUID().uuidString).xml")
-            defer { try? FileManager.default.removeItem(at: url) }
-            do {
-                let result = try await ProcessRunner.run(executable: tools.mkvextract, arguments: ["--ui-language", "en_US", file.url.path, "chapters", url.path])
-                guard result.exitCode <= 1 else { throw StudioError.message(result.output) }
-                setChapters(try ChapterDocument.parse(Data(contentsOf: url)))
-            } catch { report(error) }
-        }
+        defer { if chapterReadID == request { chapterReadID = nil; isLoadingChapters = false } }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("MKVStudio-chapters-\(UUID().uuidString).xml")
+        defer { try? FileManager.default.removeItem(at: url) }
+        do {
+            let result = try await ProcessRunner.run(executable: tools.mkvextract, arguments: ["--ui-language", "en_US", file.url.path, "chapters", url.path])
+            guard generation == metadataGeneration else { return }
+            guard result.exitCode <= 1 else { throw StudioError.message(result.output) }
+            setChapters(try ChapterDocument.parse(Data(contentsOf: url)))
+        } catch { if generation == metadataGeneration { report(error) } }
     }
     func exportChapters() {
         do {

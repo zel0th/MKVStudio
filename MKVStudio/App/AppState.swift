@@ -28,6 +28,8 @@ final class AppState {
     @ObservationIgnored var metadataToken: ProcessToken?
     @ObservationIgnored var previewToken: ProcessToken?
     @ObservationIgnored var previewDirectory: URL?
+    @ObservationIgnored var chapterReadID: UUID?
+    @ObservationIgnored var infoReadID: UUID?
     var isImporting = false
     var importLabel = ""
     var isInspectorVisible = true
@@ -40,6 +42,8 @@ final class AppState {
         didSet { if persistenceEnabled { defaults.set(appearance, forKey: "appearance") } }
     }
     private var token: ProcessToken?
+    // Session-only ownership: restored jobs must never clear a newly opened workspace.
+    @ObservationIgnored private var queuedWorkspaces: [UUID: (generation: UUID, project: StudioProject)] = [:]
     @ObservationIgnored private let persistenceEnabled: Bool
     @ObservationIgnored let defaults: UserDefaults
     init(persistenceEnabled: Bool = true, defaults: UserDefaults = .standard) {
@@ -203,6 +207,7 @@ final class AppState {
         guard !jobs.contains(where: { ($0.state == .waiting || $0.state == .running) && $0.output.standardizedFileURL == job.output.standardizedFileURL }) else {
             throw StudioError.message("Задание с этим файлом результата уже есть в очереди.")
         }
+        if !files.isEmpty { queuedWorkspaces[job.id] = (metadataGeneration, completionSnapshot) }
         jobs.append(job); selectedJobID = job.id; selectedSection = .queue; saveHistory()
     }
     func startQueue() {
@@ -214,7 +219,7 @@ final class AppState {
         }
     }
     func stopQueue() { queueRunning = false; token?.cancel() }
-    func cancelWaiting(_ id: UUID) { guard jobs.first(where: { $0.id == id })?.state == .waiting else { return }; updateJob(id) { $0.state = .cancelled }; saveHistory() }
+    func cancelWaiting(_ id: UUID) { guard jobs.first(where: { $0.id == id })?.state == .waiting else { return }; updateJob(id) { $0.state = .cancelled }; queuedWorkspaces[id] = nil; saveHistory() }
     func execute(_ id: UUID) async {
         guard let job = jobs.first(where: { $0.id == id }) else { return }
         let currentToken = ProcessToken(); token = currentToken
@@ -243,6 +248,7 @@ final class AppState {
             try MKVCommandBuilder.publish(job)
             updateJob(id) { $0.state = result.exitCode == 1 || !tagWarnings.isEmpty ? .warning : .finished; $0.progress = 1; $0.log = String((result.output + tagWarnings).suffix(100_000)) }
             try? FileManager.default.removeItem(at: job.stagingDirectory)
+            clearCompletedWorkspace(for: id)
         } catch {
             let cancelled = error is CancellationError
             updateJob(id) { $0.state = cancelled ? .cancelled : .failed; $0.log += "\n\(cancelled ? "Операция отменена." : error.localizedDescription)"; $0.log = String($0.log.suffix(100_000)) }
@@ -266,12 +272,27 @@ final class AppState {
     private func updateJob(_ id: UUID, _ edit: (inout QueueJob) -> Void) {
         guard let i = jobs.firstIndex(where: { $0.id == id }) else { return }; edit(&jobs[i])
     }
-    func resetWorkspace() {
+    private var completionSnapshot: StudioProject {
+        var snapshot = project
+        // Reading source tags initializes an empty edit object without changing the user's work.
+        if snapshot.tagEdits?.values.isEmpty == true { snapshot.tagEdits = nil }
+        return snapshot
+    }
+    private func clearCompletedWorkspace(for id: UUID) {
+        guard let submitted = queuedWorkspaces.removeValue(forKey: id),
+              !isImporting, submitted.generation == metadataGeneration,
+              submitted.project == completionSnapshot else { return }
+        resetWorkspace(section: selectedSection)
+    }
+    func resetWorkspace(section: StudioSection? = .workspace) {
         clearMetadata()
+        queuedWorkspaces.removeAll()
         project = StudioProject()
         selectedTrackID = nil; selectedFileID = nil
         selectedChapterID = nil; selectedEditionID = nil
-        selectedSection = .workspace
+        chapterReadID = nil; infoReadID = nil
+        isLoadingChapters = false; isReadingInfo = false; errorMessage = nil
+        selectedSection = section
         infoText = "Выберите исходный Matroska-файл, чтобы изучить его структуру."
     }
     func finishSession() {
@@ -284,7 +305,10 @@ final class AppState {
         if let data = try? JSONEncoder().encode(jobs) { defaults.set(data, forKey: historyKey) }
     }
     func clearFinishedJobs() {
-        jobs.removeAll { $0.state != .running && $0.state != .waiting }; saveHistory()
+        jobs.removeAll { $0.state != .running && $0.state != .waiting }
+        let remaining = Set(jobs.map(\.id))
+        queuedWorkspaces = queuedWorkspaces.filter { remaining.contains($0.key) }
+        saveHistory()
     }
     func extractSelectedTrack() {
         guard let file = trackSource, let track = selectedTrack, let tools else { return }
@@ -305,7 +329,9 @@ final class AppState {
     func readInfo() async {
         guard let tools, let file = selectedFile, !isReadingInfo else { return }
         let generation = metadataGeneration
-        isReadingInfo = true; defer { isReadingInfo = false }
+        let request = UUID(); infoReadID = request
+        isReadingInfo = true
+        defer { if infoReadID == request { infoReadID = nil; isReadingInfo = false } }
         do {
             let result = try await ProcessRunner.run(executable: tools.mkvinfo, arguments: ["--ui-language", "en_US", file.url.path], outputLimit: 2_097_152)
             guard result.exitCode <= 1 else { throw StudioError.message(result.output) }

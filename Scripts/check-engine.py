@@ -49,6 +49,10 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try session.freshSession(); print("PASS fresh launch, termination, queue and preferences")
         try session.toolDirectories(); print("PASS tool picker initial directories")
         try session.settingsPlacement(); print("PASS settings placement across display geometries")
+        try await session.completedWorkspace(); print("PASS successful remux, append, split, headers and extraction clear every editor")
+        try await session.completionOutcomes(); print("PASS warning reset; failed, cancelled and unpublished jobs preserve work")
+        try await session.newerWorkSurvives(); print("PASS queued snapshots and newer edits survive older job completion")
+        try await session.lateReaders(); print("PASS late chapter and information reads cannot restore cleared fields")
         let metadata = MetadataTests()
         try metadata.preservation(); print("PASS standard tags, nesting, languages, targets and validation")
         try await metadata.realTags(); print("PASS real tag edits in remux, append and split; queue snapshot; unchanged streams")
@@ -61,7 +65,7 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try await kinopoisk.atomicity(); print("PASS series scope, language conflicts, stale workspace and atomic import")
         try await kinopoisk.http(); print("PASS actual bounded HTTP transport, redirects and cancellation")
         try await kinopoisk.untaggedSource(); print("PASS online selection and import for MKV without Tags; unchanged streams")
-        print("29 integration checks passed")
+        print("33 integration checks passed")
     }
 }
 '''

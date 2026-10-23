@@ -13,7 +13,8 @@ struct ChapterEditorView: View {
                     Spacer()
                     Menu("Импорт") {
                         Button("XML или текст…", action: state.importChapterDocument)
-                        Button("Из выбранного MKV", action: state.extractChapters).disabled(state.selectedFile?.isMatroska != true || state.tools == nil || state.isLoadingChapters)
+                        Button("Из выбранного MKV") { Task { await state.extractChapters() } }
+                            .disabled(state.selectedFile?.isMatroska != true || state.tools == nil || state.isLoadingChapters)
                     }
                     Button("Экспорт XML…", action: state.exportChapters).disabled(state.chapterRows.isEmpty)
                 }
