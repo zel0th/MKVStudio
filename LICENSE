@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 This license applies to MKVStudio's own source code. External console utilities
-and their libraries retain their respective licenses and are downloaded from
-the original publisher during installation. Samples/Видео.mp4 is covered by
+and their libraries retain their respective licenses. Release bundles include
+the console tools, matching upstream source archives and license notices under
+Contents/Resources/ConsoleTools; see Distribution/THIRD-PARTY.txt. Samples/Видео.mp4 is covered by
 Samples/Homebrew-LICENSE.txt.

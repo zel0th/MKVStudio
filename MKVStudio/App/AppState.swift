@@ -108,6 +108,11 @@ final class AppState {
             Task { await detectTools() }
         } catch { report(error) }
     }
+    func useBundledTools() async {
+        defaults.removeObject(forKey: "toolsPath")
+        defaults.removeObject(forKey: "consoleToolPaths")
+        await detectTools()
+    }
     func importFiles() {
         let panel = NSOpenPanel(); panel.allowsMultipleSelection = true
         panel.message = "Добавьте видео, аудио или субтитры в сборку."
@@ -221,7 +226,8 @@ final class AppState {
     func stopQueue() { queueRunning = false; token?.cancel() }
     func cancelWaiting(_ id: UUID) { guard jobs.first(where: { $0.id == id })?.state == .waiting else { return }; updateJob(id) { $0.state = .cancelled }; queuedWorkspaces[id] = nil; saveHistory() }
     func execute(_ id: UUID) async {
-        guard let job = jobs.first(where: { $0.id == id }) else { return }
+        guard let savedJob = jobs.first(where: { $0.id == id }) else { return }
+        let job = savedJob.relocatingBundledTools()
         let currentToken = ProcessToken(); token = currentToken
         updateJob(id) { $0.state = .running; $0.progress = 0; $0.log = "" }; saveHistory()
         defer { token = nil; saveHistory() }

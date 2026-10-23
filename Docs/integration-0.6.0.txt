@@ -1,0 +1,36 @@
+PASS remux, streams, metadata and attachments
+PASS track and attachment exclusion
+PASS extraction, header edits, mkvinfo
+PASS source and destination protection
+PASS project round trip
+PASS argv safety and large output
+PASS process cancellation
+PASS multiple sources with video, audio and subtitles
+PASS append, explicit mappings and PCM equality
+PASS split duration, size, timestamps, parts and PCM equality
+PASS chapter XML, nested chapters, extraction and chapter splitting
+PASS HDR metadata and unchanged video stream
+PASS legacy projects and time validation
+PASS bounded capture and UI mailbox
+PASS independent console executable paths
+PASS last-source removal clears output and title
+PASS fresh launch, termination, queue and preferences
+PASS tool picker initial directories
+PASS settings placement across display geometries
+PASS successful remux, append, split, headers and extraction clear every editor
+PASS warning reset; failed, cancelled and unpublished jobs preserve work
+PASS queued snapshots and newer edits survive older job completion
+PASS late chapter and information reads cannot restore cleared fields
+PASS standard tags, nesting, languages, targets and validation
+PASS real tag edits in remux, append and split; queue snapshot; unchanged streams
+PASS attachment and tag previews, limits, safe paths and cleanup
+PASS absent Tags: editor, preview, first write and extraction errors
+PASS API requests, schema and credential isolation
+PASS API failures, invalid images and cancellation
+PASS selected online tags/poster through real remux, queue persistence and unchanged streams
+PASS series scope, language conflicts, stale workspace and atomic import
+PASS actual bounded HTTP transport, redirects and cancellation
+PASS online selection and import for MKV without Tags; unchanged streams
+PASS bundled precedence, external overrides, missing helpers and no host tools
+PASS relocated queued tools, tag processing and real output
+35 integration checks passed

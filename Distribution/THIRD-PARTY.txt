@@ -1,0 +1,29 @@
+MKVStudio — bundled console tools
+
+MKVStudio runs mkvmerge, mkvinfo, mkvextract and mkvpropedit as separate
+processes. It does not link its own executable against these programs or Qt.
+MKVStudio's original source code remains under the MIT license.
+
+Console tools: version 102.0, GPL-2.0-or-later, copyright Moritz Bunkus and
+contributors. The official macOS binaries are provided by Graham Thompson.
+Qt Core: version 6.11.1, copyright The Qt Company Ltd. and contributors;
+LGPL-3.0 / GPL licensing options and third-party notices are retained in the
+included Qt source archive. See Licenses for extracted license texts.
+
+Only the four console programs and their recursive non-system dynamic
+library dependencies are copied from the pinned upstream DMG. The GUI,
+GUI plugins and unused Qt libraries are excluded. Binaries are not patched
+or relinked; their local ad-hoc signatures are renewed for this app bundle.
+
+Sources/ contains the matching upstream console-tool and Qt Base source
+archives, including build instructions, macOS packaging scripts and
+third-party code/notices. sources.json records URLs, versions and SHA-256
+checksums; payload.json records hashes after local signing. License texts
+are also provided separately under Licenses/ and COPYING-GPL-2.0.txt.
+
+The console tools use a replaceable dynamic Qt Core library under
+Contents/Helpers/ConsoleTools/libs. Modified tools/libraries can be rebuilt
+from their upstream sources and used via MKVStudio Settings, or substituted
+in a local copy of the bundle and re-signed. There is no DRM or online
+activation check. The full upstream distributions and their licenses remain
+available from https://mkvtoolnix.download/ and https://download.qt.io/.

@@ -1,0 +1,12 @@
+{
+  "scenario": "standalone_production_ui_after_remux_idle",
+  "duration_s": 24.950631542,
+  "cpu_mean_pct": 0.007721247443203176,
+  "rss_first_mib": 168.5625,
+  "rss_last_mib": 168.546875,
+  "rss_peak_mib": 168.5625,
+  "samples": 465,
+  "host_tools_read_access": "denied",
+  "bundle_identifier": "com.zshfan.MKVStudio.StandaloneQA",
+  "executable_payload_matches_release_excluding_code_signature": true
+}

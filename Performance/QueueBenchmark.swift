@@ -20,7 +20,11 @@ import Darwin
     }
     @MainActor static func main() async throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
-        guard let tools = ToolLocator.discover() else { throw StudioError.message("Console utilities unavailable") }
+        let tools: ValidatedTools
+        if let directory = ProcessInfo.processInfo.environment["MKVSTUDIO_TOOLS_DIRECTORY"] {
+            tools = try ToolLocator.validate(directory: URL(fileURLWithPath: directory))
+        } else if let discovered = ToolLocator.discover() { tools = discovered }
+        else { throw StudioError.message("Console utilities unavailable") }
         let state = AppState(persistenceEnabled: false); state.tools = tools
         let source = try await ToolLocator.identify(root.appendingPathComponent("stress.wav"), tools: tools)
         var second = source; second.id = UUID(); second.tracks[0].id = UUID()

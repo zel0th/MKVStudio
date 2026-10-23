@@ -1,3 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-/bin/bash "$(dirname "$0")/install-console-tools.sh" "${3:-/}"

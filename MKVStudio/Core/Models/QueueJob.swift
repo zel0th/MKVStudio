@@ -26,4 +26,15 @@ struct QueueJob: Identifiable, Codable, Sendable {
     var splitOutput: Bool?
     var chapterXML: String?
     var tagOptions: TagJobOptions?
+
+    func relocatingBundledTools(to bundleURL: URL = Bundle.main.bundleURL) -> Self {
+        var job = self
+        job.executable = ToolLocator.relocatedExecutable(executable, bundleURL: bundleURL)
+        if var tags = tagOptions {
+            tags.extract = ToolLocator.relocatedExecutable(tags.extract, bundleURL: bundleURL)
+            tags.propedit = ToolLocator.relocatedExecutable(tags.propedit, bundleURL: bundleURL)
+            job.tagOptions = tags
+        }
+        return job
+    }
 }

@@ -26,7 +26,9 @@ extension AppState {
         Task { await detectTools() }
     }
     func toolPath(_ name: String) -> String {
-        if let explicit = (defaults.dictionary(forKey: "consoleToolPaths") as? [String: String])?[name] { return explicit }
+        if let explicit = (defaults.dictionary(forKey: "consoleToolPaths") as? [String: String])?[name] {
+            return ToolLocator.relocatedExecutable(URL(fileURLWithPath: explicit)).path
+        }
         return tools?.executables.first { $0.lastPathComponent == name }?.path ?? "Не найден"
     }
     func moveFile(_ id: UUID, offset: Int) {

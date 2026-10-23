@@ -43,7 +43,12 @@ struct Fixture {
 
 @Suite("Console utilities integration")
 struct EngineTests {
-    func tools() throws -> ValidatedTools { try #require(ToolLocator.discover(), "Install mkvmerge, mkvinfo, mkvextract and mkvpropedit before running integration tests") }
+    func tools() throws -> ValidatedTools {
+        if let path = ProcessInfo.processInfo.environment["MKVSTUDIO_TOOLS_DIRECTORY"] {
+            return try ToolLocator.validate(directory: URL(fileURLWithPath: path))
+        }
+        return try #require(ToolLocator.discover(), "Build the standalone app or provide console tools before running integration tests")
+    }
 
     @Test("Remux preserves streams and attachments, applies real track options")
     func remux() async throws {

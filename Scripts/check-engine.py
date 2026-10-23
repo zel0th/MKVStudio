@@ -2,6 +2,7 @@
 from pathlib import Path
 import os, re, subprocess, tempfile, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from isolated_tools import isolated_command
 root = Path(__file__).resolve().parent.parent
 source = '\n'.join(p.read_text() for p in sorted((root / 'Tests').glob('*.swift')))
 source = source.replace('import Testing\n', '').replace('@testable import MKVStudio\n', '')
@@ -12,6 +13,7 @@ source = source.replace('await #expect(throws: CancellationError.self)', 'try aw
 source = source.replace('#expect(', 'try expect(')
 helpers = '''
 struct CheckFailure: Error { let message: String }
+func print(_ value: String) { FileHandle.standardOutput.write(Data((value + "\\n").utf8)) }
 func expect(_ condition: @autoclosure () throws -> Bool, _ message: String = "Expectation failed", file: StaticString = #filePath, line: UInt = #line) throws {
     guard try condition() else { throw CheckFailure(message: "\\(file):\\(line): \\(message)") }
 }
@@ -65,7 +67,10 @@ func expectCancellation<T>(_ action: () async throws -> T) async throws {
         try await kinopoisk.atomicity(); print("PASS series scope, language conflicts, stale workspace and atomic import")
         try await kinopoisk.http(); print("PASS actual bounded HTTP transport, redirects and cancellation")
         try await kinopoisk.untaggedSource(); print("PASS online selection and import for MKV without Tags; unchanged streams")
-        print("33 integration checks passed")
+        let bundled = BundledToolsTests()
+        try bundled.discovery(); print("PASS bundled precedence, external overrides, missing helpers and no host tools")
+        try await bundled.relocation(); print("PASS relocated queued tools, tag processing and real output")
+        print("35 integration checks passed")
     }
 }
 '''
@@ -91,5 +96,5 @@ with tempfile.TemporaryDirectory(prefix='mkvstudio-checks-') as folder:
     server = ThreadingHTTPServer(('127.0.0.1',0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        subprocess.run([str(binary)], check=True, env={**os.environ, 'MKVSTUDIO_SAMPLE_PATH': str(root/'Samples/Видео.mp4'), 'MKVSTUDIO_HTTP_FIXTURE': f'http://127.0.0.1:{server.server_port}'})
+        subprocess.run(isolated_command([str(binary)]), check=True, env={**os.environ, 'MKVSTUDIO_SAMPLE_PATH': str(root/'Samples/Видео.mp4'), 'MKVSTUDIO_HTTP_FIXTURE': f'http://127.0.0.1:{server.server_port}'})
     finally: server.shutdown(); server.server_close()

@@ -244,7 +244,7 @@ struct SessionTests {
         #expect(ToolLocator.selectionDirectory(defaults: defaults).path == custom.path)
         defaults.set("/missing/tools", forKey: "toolsPath")
         let fallback = ToolLocator.selectionDirectory(defaults: defaults)
-        #expect(FileManager.default.fileExists(atPath: fallback.path))
+        #expect(FileManager.default.fileExists(atPath: fallback.path), "Fallback directory: \(fallback.path)")
         #expect(ToolLocator.standardDirectories.contains(fallback.path) || fallback.path == "/Applications")
     }
 

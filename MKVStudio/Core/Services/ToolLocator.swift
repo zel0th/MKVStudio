@@ -9,6 +9,22 @@ struct ValidatedTools: Sendable {
 }
 enum ToolLocator {
     static let names = ["mkvmerge", "mkvinfo", "mkvextract", "mkvpropedit"]
+    static let bundledRelativePath = "Contents/Helpers/ConsoleTools"
+    static func bundledDirectory(in bundleURL: URL = Bundle.main.bundleURL) -> URL? {
+        guard bundleURL.pathExtension == "app" else { return nil }
+        let directory = bundleURL.appendingPathComponent(bundledRelativePath, isDirectory: true)
+        // Packaged releases require their own payload even if its folder was deleted.
+        if Bundle(url: bundleURL)?.object(forInfoDictionaryKey: "MKVStudioBundledTools") as? Bool == true { return directory }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else { return nil }
+        return directory
+    }
+    static func relocatedExecutable(_ url: URL, bundleURL: URL = Bundle.main.bundleURL) -> URL {
+        guard names.contains(url.lastPathComponent),
+              url.deletingLastPathComponent().path.hasSuffix(".app/" + bundledRelativePath),
+              let directory = bundledDirectory(in: bundleURL) else { return url }
+        return directory.appendingPathComponent(url.lastPathComponent)
+    }
     static let standardDirectories = [
         "/opt/homebrew/bin", "/usr/local/bin",
         "/Library/Application Support/MKVStudio/ConsoleTools/bin"
@@ -23,14 +39,14 @@ enum ToolLocator {
         }
         let configured = defaults.string(forKey: "toolsPath").map { URL(fileURLWithPath: $0, isDirectory: true) }
         let candidates = explicit + [currentExecutable?.deletingLastPathComponent(), configured].compactMap { $0 }
-        let standard = standardDirectories.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let standard = [bundledDirectory()].compactMap { $0 } + standardDirectories.map { URL(fileURLWithPath: $0, isDirectory: true) }
         func exists(_ url: URL) -> Bool {
             var directory: ObjCBool = false
             return FileManager.default.fileExists(atPath: url.path, isDirectory: &directory) && directory.boolValue
         }
         if let current = candidates.first(where: exists) { return current }
         if let installed = standard.first(where: { directory in
-            selectedNames.contains { FileManager.default.isExecutableFile(atPath: directory.appendingPathComponent($0).path) }
+            exists(directory) && selectedNames.contains { FileManager.default.isExecutableFile(atPath: directory.appendingPathComponent($0).path) }
         }) { return installed }
         return standard.first(where: exists) ?? URL(fileURLWithPath: "/Applications", isDirectory: true)
     }
@@ -44,15 +60,25 @@ enum ToolLocator {
         }
         return ValidatedTools(mkvmerge: urls[0], mkvinfo: urls[1], mkvextract: urls[2], mkvpropedit: urls[3])
     }
-    static func discover(defaults: UserDefaults = .standard) -> ValidatedTools? {
+    static func discover(defaults: UserDefaults = .standard, bundleURL: URL = Bundle.main.bundleURL,
+                         searchDirectories: [String]? = nil) -> ValidatedTools? {
         let overrides = defaults.dictionary(forKey: "consoleToolPaths") as? [String: String] ?? [:]
-        var directories = [defaults.string(forKey: "toolsPath")].compactMap { $0 }
-        directories += standardDirectories
-        directories += (ProcessInfo.processInfo.environment["PATH"] ?? "").components(separatedBy: ":").filter { $0.hasPrefix("/") }
+        var directories = [defaults.string(forKey: "toolsPath")].compactMap { path in
+            path.map { relocatedExecutable(URL(fileURLWithPath: $0).appendingPathComponent("mkvmerge"), bundleURL: bundleURL).deletingLastPathComponent().path }
+        }
+        if let bundled = bundledDirectory(in: bundleURL) {
+            // A packaged app uses one self-contained toolset; a damaged bundle must not
+            // silently mix in a different version from the host machine.
+            directories.append(bundled.path)
+        } else {
+            directories += searchDirectories ?? (standardDirectories +
+                (ProcessInfo.processInfo.environment["PATH"] ?? "").components(separatedBy: ":").filter { $0.hasPrefix("/") })
+        }
         var paths: [String: String] = [:]
         for name in names {
             // An explicit invalid override remains visible as an error, never silently replaced.
-            paths[name] = overrides[name] ?? directories.map { URL(fileURLWithPath: $0).appendingPathComponent(name).path }.first { FileManager.default.isExecutableFile(atPath: $0) }
+            paths[name] = overrides[name].map { relocatedExecutable(URL(fileURLWithPath: $0), bundleURL: bundleURL).path }
+                ?? directories.map { URL(fileURLWithPath: $0).appendingPathComponent(name).path }.first { FileManager.default.isExecutableFile(atPath: $0) }
         }
         return try? validate(paths: paths)
     }

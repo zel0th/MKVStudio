@@ -58,14 +58,16 @@ struct StudioSettings: View {
                 HStack {
                     Button("Выбрать папку…", action: state.chooseTools)
                     Button("Проверить") { Task { await state.detectTools() } }
+                    Button("Использовать встроенные") { Task { await state.useBundledTools() } }
+                        .disabled(ToolLocator.bundledDirectory() == nil)
                 }
-                Text("Установщик MKVStudio добавляет недостающие консольные утилиты. Здесь можно выбрать собственную версию каждой программы.")
+                Text("Все четыре утилиты включены в приложение. Дополнительная установка не нужна. При желании можно выбрать собственные версии.")
                     .font(.body).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
               }.padding(12)
             }
             HStack {
-                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.5.2")").foregroundStyle(.secondary)
+                Text("MKVStudio \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.6.0")").foregroundStyle(.secondary)
                 Spacer()
                 Link("Документация mkvmerge", destination: URL(string: "https://man.archlinux.org/man/mkvmerge.1.en")!)
             }

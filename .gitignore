@@ -19,3 +19,5 @@ Docs/performance.md
 Docs/*.png
 Docs/integration-checks.txt
 Samples/English.srt
+
+__pycache__/
